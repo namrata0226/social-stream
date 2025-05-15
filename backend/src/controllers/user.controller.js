@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiError } from "../utils/ApiError.js";
+import {ApiError} from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -382,23 +382,29 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                 },
               ],
             },
-          },{
-            $addFields:{
-              owner:{
-                $first:"$owner"
-              }
-            }
-          }
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
         ],
       },
     },
   ]);
-  if(!user)
-    throw new ApiError("404","unable to find watch history");
-    
-  return res.status(200).json(new ApiResponse(200,
-            user[0].watchHistory,
-            "Watch history fetched successfully"))
+  if (!user) throw new ApiError("404", "unable to find watch history");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully"
+      )
+    );
 });
 export {
   registerUser,
