@@ -1,147 +1,69 @@
-import mongoose from "mongoose";
-import { Video } from "../models/video.model.js";
-import { Subscription } from "../models/subscription.model.js";
-import { Like } from "../models/like.model.js";
-import {ApiResponse} from "../utils/ApiResponse.js";
-import {asyncHandler} from "../utils/asyncHandler.js";
+import { Comment, Like, Subscription, Video } from "../models/index.js";
+import { ok } from "../utils/ApiResponse.js";
 
-const getChannelStats = asyncHandler(async (req, res) => {
-  
-    const userId = req.user?._id;
+// GET /dashboard/stats
+export const getChannelStats = async (req, res) => {
+  const owner = req.user._id;
+  const videoIds = await Video.find({ owner }).distinct("_id");
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const totalSubscribers = await Subscription.aggregate([
-        {
-            $match: {
-                channel: new mongoose.Types.ObjectId(userId)
-            }
+  const [videoAgg, subscribers, newSubscribers, likes, comments, top] = await Promise.all([
+    Video.aggregate([
+      { $match: { owner } },
+      {
+        $group: {
+          _id: null,
+          totalVideos: { $sum: 1 },
+          published: { $sum: { $cond: ["$isPublished", 1, 0] } },
+          totalViews: { $sum: "$views" },
+          totalDuration: { $sum: "$duration" },
         },
-        {
-            $group: {
-                _id: null,
-                subscribersCount: {
-                    $sum: 1
-                }
-            }
-        }
-    ]);
+      },
+    ]),
+    Subscription.countDocuments({ channel: owner }),
+    Subscription.countDocuments({ channel: owner, createdAt: { $gte: since } }),
+    Like.countDocuments({ video: { $in: videoIds }, type: "like" }),
+    Comment.countDocuments({ video: { $in: videoIds } }),
+    Video.find({ owner }).sort({ views: -1 }).limit(5).select("title views thumbnail createdAt"),
+  ]);
 
-    const video = await Video.aggregate([
-        {
-            $match: {
-                owner: new mongoose.Types.ObjectId(userId)
-            }
-        },
-        {
-            $lookup: {
-                from: "likes",
-                localField: "_id",
-                foreignField: "video",
-                as: "likes"
-            }
-        },
-        {
-            $project: {
-                totalLikes: {
-                    $size: "$likes"
-                },
-                totalViews: "$views",
-                totalVideos: 1
-            }
-        },
-        {
-            $group: {
-                _id: null,
-                totalLikes: {
-                    $sum: "$totalLikes"
-                },
-                totalViews: {
-                    $sum: "$totalViews"
-                },
-                totalVideos: {
-                    $sum: 1
-                }
-            }
-        }
-    ]);
+  const v = videoAgg[0] || {};
+  return ok(res, {
+    totalVideos: v.totalVideos || 0,
+    publishedVideos: v.published || 0,
+    totalViews: v.totalViews || 0,
+    totalDuration: v.totalDuration || 0,
+    totalSubscribers: subscribers,
+    newSubscribers30d: newSubscribers,
+    totalLikes: likes,
+    totalComments: comments,
+    topVideos: top,
+  });
+};
 
-    const channelStats = {
-        totalSubscribers: totalSubscribers[0]?.subscribersCount || 0,
-        totalLikes: video[0]?.totalLikes || 0,
-        totalViews: video[0]?.totalViews || 0,
-        totalVideos: video[0]?.totalVideos || 0
-    };
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                channelStats,
-                "channel stats fetched successfully"
-            )
-        );
-});
-
-const getChannelVideos = asyncHandler(async (req, res) => {
-    // TODO: Get all the videos uploaded by the channel
-    const userId = req.user?._id;
-
-    const videos = await Video.aggregate([
-        {
-            $match: {
-                owner: new mongoose.Types.ObjectId(userId)
-            }
-        },
-        {
-            $lookup: {
-                from: "likes",
-                localField: "_id",
-                foreignField: "video",
-                as: "likes"
-            }
-        },
-        {
-            $addFields: {
-                createdAt: {
-                    $dateToParts: { date: "$createdAt" }
-                },
-                likesCount: {
-                    $size: "$likes"
-                }
-            }
-        },
-        {
-            $sort: {
-                createdAt: -1
-            }
-        },
-        {
-            $project: {
-                _id: 1,
-                "videoFile.url": 1,
-                "thumbnail.url": 1,
-                title: 1,
-                description: 1,
-                createdAt: {
-                    year: 1,
-                    month: 1,
-                    day: 1
-                },
-                isPublished: 1,
-                likesCount: 1
-            }
-        }
-    ]);
-
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            videos,
-            "channel stats fetched successfully"
-        )
-    );
-});
-
-export { getChannelStats, getChannelVideos };
+// GET /dashboard/videos — all of the creator's videos (including drafts) with engagement numbers
+export const getChannelVideos = async (req, res) => {
+  const videos = await Video.aggregate([
+    { $match: { owner: req.user._id } },
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "reactions",
+        pipeline: [{ $project: { type: 1 } }],
+      },
+    },
+    { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments", pipeline: [{ $project: { _id: 1 } }] } },
+    {
+      $addFields: {
+        likesCount: { $size: { $filter: { input: "$reactions", cond: { $eq: ["$$this.type", "like"] } } } },
+        dislikesCount: { $size: { $filter: { input: "$reactions", cond: { $eq: ["$$this.type", "dislike"] } } } },
+        commentsCount: { $size: "$comments" },
+      },
+    },
+    { $project: { reactions: 0, comments: 0, videoFile: 0 } },
+  ]);
+  return ok(res, videos);
+};
