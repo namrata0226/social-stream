@@ -1,0 +1,15 @@
+{
+  "name": "kinora",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Kinora — a video platform with timeline Moments, private timestamped notes and mood-based discovery",
+  "scripts": {
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install && node -e \"const fs=require('fs');if(!fs.existsSync('backend/.env')){const c=require('crypto');fs.writeFileSync('backend/.env',fs.readFileSync('backend/.env.example','utf8').replace('change-me-access-secret',c.randomBytes(32).toString('hex')).replace('change-me-refresh-secret',c.randomBytes(32).toString('hex')));console.log('Created backend/.env')}\"",
+    "dev": "concurrently -k -n api,web -c magenta,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}

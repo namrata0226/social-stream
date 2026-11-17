@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { color-scheme: dark; }
+  body {
+    @apply min-h-screen;
+    /* soft aurora glow at the top of every page */
+    background:
+      radial-gradient(1200px 500px at 10% -10%, rgba(139, 92, 246, 0.14), transparent 60%),
+      radial-gradient(900px 400px at 95% -5%, rgba(34, 211, 238, 0.08), transparent 60%),
+      #07070d;
+    background-attachment: fixed;
+  }
+  h1, h2, h3 { @apply font-display; }
+  ::selection { background: #8b5cf666; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-gradient-to-r from-brand to-indigo-500 text-white shadow-lg shadow-brand/20 hover:brightness-110; }
+  .btn-light { @apply btn bg-white text-ink-950 hover:bg-zinc-200; }
+  .btn-ghost { @apply btn bg-white/[0.07] text-white ring-1 ring-inset ring-white/10 hover:bg-white/[0.12]; }
+  .btn-icon { @apply inline-flex h-10 w-10 items-center justify-center rounded-xl text-zinc-200 transition hover:bg-white/10; }
+  .input { @apply w-full rounded-xl border border-ink-600 bg-ink-800 px-3 py-2.5 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30; }
+  .label { @apply mb-1.5 block text-sm font-medium text-zinc-300; }
+  .card { @apply rounded-2xl border border-white/[0.06] bg-ink-900/80 backdrop-blur; }
+  .chip { @apply whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition; }
+  .page { @apply mx-auto w-full max-w-[1800px] px-4 py-6 sm:px-6; }
+  .page-title { @apply mb-6 font-display text-3xl font-bold tracking-tight; }
+  .text-aurora { @apply bg-gradient-to-r from-brand-soft via-indigo-300 to-glow bg-clip-text text-transparent; }
+  .bg-aurora { @apply bg-gradient-to-r from-brand via-indigo-500 to-glow; }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #2d2d40; border-radius: 10px; border: 2px solid #07070d; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
